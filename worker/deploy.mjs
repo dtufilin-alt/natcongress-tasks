@@ -23,3 +23,18 @@ await cf(prefix+'/workers/scripts/natcongress-tasks-api/subdomain','POST',{enabl
 const url='https://natcongress-tasks-api.'+sub.subdomain+'.workers.dev';
 writeFileSync('config.js','window.NATCONGRESS_API_BASE = '+JSON.stringify(url)+';\n');
 console.log('Backend deployed: '+url);
+const origin='https://dtufilin-alt.github.io';
+async function request(method,path='',body){const r=await fetch(url+'/api/tasks'+path,{method,headers:{Origin:origin,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return {status:r.status,headers:r.headers,data:await r.json()}}
+let ready=false;for(let i=0;i<12;i++){try{if((await request('GET')).status===200){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,5000))}if(!ready)throw Error('Public API not available yet');
+const testId='smoke-'+crypto.randomUUID();let revision;
+try{
+ const created=await request('POST','',{task:{id:testId,title:'Тест синхронизации (автоудаление)',owner:'',due:'',notes:'',priority:'Низкий',done:false,action:false}});
+ if(created.status!==201)throw Error('Create failed');revision=created.data.task.revision;
+ const a=(await request('GET')).data.tasks.find(t=>t.id===testId),b=(await request('GET')).data.tasks.find(t=>t.id===testId);
+ const updated=await request('PUT','/'+testId,{task:{...a,title:'Обновлённая тестовая задача'},revision:a.revision});
+ if(updated.status!==200)throw Error('Update failed');revision=updated.data.task.revision;
+ const stale=await request('PUT','/'+testId,{task:b,revision:b.revision});if(stale.status!==409)throw Error('Conflict protection failed');
+ const second=await request('GET');if(second.data.tasks.find(t=>t.id===testId).title!=='Обновлённая тестовая задача')throw Error('Second client missing update');
+ if(second.headers.get('access-control-allow-origin')!==origin)throw Error('CORS failed');
+ console.log('Live checks passed: create, two client reads, update, stale edit rejection, CORS');
+}finally{if(revision){const removed=await request('DELETE','/'+testId,{revision});if(removed.status!==200)throw Error('Test cleanup failed');console.log('Test task deleted')}}
