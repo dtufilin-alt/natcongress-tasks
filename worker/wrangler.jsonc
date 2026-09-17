@@ -1,0 +1,14 @@
+{
+  "name": "natcongress-tasks-api",
+  "main": "index.mjs",
+  "compatibility_date": "2026-09-01",
+  "vars": {
+    "ACCESS_MODE": "closed",
+    "ALLOWED_ORIGIN": "https://dtufilin-alt.github.io"
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "natcongress-tasks",
+    "database_id": "SET_DURING_DEPLOYMENT"
+  }]
+}
