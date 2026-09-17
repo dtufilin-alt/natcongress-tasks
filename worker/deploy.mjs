@@ -14,7 +14,7 @@ const prefix='/accounts/'+accounts[0].id;
 let db=(await cf(prefix+'/d1/database?name=natcongress-tasks')).find(x=>x.name==='natcongress-tasks');
 if(!db)db=await cf(prefix+'/d1/database','POST',{name:'natcongress-tasks'});
 await cf(prefix+'/d1/database/'+db.uuid+'/query','POST',{sql:readFileSync('worker/schema.sql','utf8')});
-let sub=await cf(prefix+'/workers/subdomain');
+let sub;try{sub=await cf(prefix+'/workers/subdomain')}catch(error){if(!error.message.includes('HTTP 404 codes 10007'))throw error;sub={}}
 if(!sub.subdomain)sub=await cf(prefix+'/workers/subdomain','PUT',{subdomain:'natcongress-'+accounts[0].id.slice(0,8)});
 const metadata={main_module:'index.mjs',compatibility_date:'2026-09-01',bindings:[{type:'d1',name:'DB',id:db.uuid},{type:'plain_text',name:'ACCESS_MODE',text:'public'},{type:'plain_text',name:'ALLOWED_ORIGIN',text:'https://dtufilin-alt.github.io'}]};
 const form=new FormData();form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));form.append('index.mjs',new Blob([readFileSync('worker/index.mjs')],{type:'application/javascript+module'}),'index.mjs');
