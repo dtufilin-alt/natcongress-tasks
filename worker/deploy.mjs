@@ -20,12 +20,13 @@ const metadata={main_module:'index.mjs',compatibility_date:'2026-09-01',bindings
 const form=new FormData();form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));form.append('index.mjs',new Blob([readFileSync('worker/index.mjs')],{type:'application/javascript+module'}),'index.mjs');
 await cf(prefix+'/workers/scripts/natcongress-tasks-api','PUT',form);
 await cf(prefix+'/workers/scripts/natcongress-tasks-api/subdomain','POST',{enabled:true});
+console.log('Subdomain status:',JSON.stringify(await cf(prefix+'/workers/scripts/natcongress-tasks-api/subdomain')));
 const url='https://natcongress-tasks-api.'+sub.subdomain+'.workers.dev';
 writeFileSync('config.js','window.NATCONGRESS_API_BASE = '+JSON.stringify(url)+';\n');
 console.log('Backend deployed: '+url);
 const origin='https://dtufilin-alt.github.io';
-async function request(method,path='',body){const r=await fetch(url+'/api/tasks'+path,{method,headers:{Origin:origin,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return {status:r.status,headers:r.headers,data:await r.json()}}
-let ready=false;for(let i=0;i<12;i++){try{if((await request('GET')).status===200){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,5000))}if(!ready)throw Error('Public API not available yet');
+async function request(method,path='',body){const r=await fetch(url+'/api/tasks'+path,{method,headers:{Origin:origin,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return {status:r.status,headers:r.headers,data:await r.json().catch(()=>({error:'non-JSON response'}))}}
+let ready=false;for(let i=0;i<12;i++){try{const probe=await request('GET');console.log('Public probe HTTP',probe.status);if(probe.status===200){ready=true;break}}catch(e){console.log('Public probe error',e.cause?.code||e.name)}await new Promise(r=>setTimeout(r,5000))}if(!ready)throw Error('Public API not available yet');
 const testId='smoke-'+crypto.randomUUID();let revision;
 try{
  const created=await request('POST','',{task:{id:testId,title:'Тест синхронизации (автоудаление)',owner:'',due:'',notes:'',priority:'Низкий',done:false,action:false}});
